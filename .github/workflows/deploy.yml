@@ -22,7 +22,6 @@ jobs:
     environment: AutoRead  # 指定环境
 
     steps:
-
     - name: Set DNS to Google's DNS
       run: |
         echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
@@ -51,14 +50,31 @@ jobs:
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         SERVERCHAN_SPT:  ${{ secrets.SERVERCHAN_SPT }}
         READ_NUM: ${{ vars.READ_NUM }}  # 使用 Repository Variables
-
       run: |
         python main.py
+
+  # 新增：清理旧构建记录任务，最多保留5天
+  clean-old-runs:
+    name: Clean Old Workflow Runs
+    if: ${{ always() }} # 无论deploy任务成功与否，都执行清理
+    needs: deploy # 依赖deploy任务完成后执行
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # 必须授予操作Actions的写入权限，才能删除构建记录
+    steps:
+      - name: Delete old workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }} # 自动注入的仓库令牌，具备所需权限
+          repository: ${{ github.repository }} # 自动填充当前仓库（格式：用户名/仓库名）
+          keep_minimum_runs: 1 # 保底保留1条记录（防止误删全部，可选调整）
+          retain_days: 5 # 核心配置：保留近5天的构建记录，超过的全部删除
+          workflow_id: ${{ github.workflow }} # 只清理当前工作流（wxread）的记录，不影响其他工作流
 
   keepalive-job:
     name: Keepalive Workflow
     if: ${{ always() }}
-    needs: deploy
+    needs: [deploy, clean-old-runs] # 依赖deploy和清理任务完成
     runs-on: ubuntu-latest
     permissions:
       actions: write
