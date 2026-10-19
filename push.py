@@ -118,7 +118,7 @@ def push(content, method, is_success = True):
         logger.warning("未配置推送渠道，跳过推送。")
         return False
 
-    method = str(method).lower()
+    method = str(method).strip().lower()
 
     if method == "pushplus":
         return notifier.push_pushplus(content, PUSHPLUS_TOKEN, is_success)
@@ -129,5 +129,6 @@ def push(content, method, is_success = True):
     if method == "serverchan":
         return notifier.push_serverChan(content, SERVERCHAN_SPT, is_success)
 
-    logger.warning("无效的通知渠道 '%s'，已跳过推送。支持：pushplus、telegram、wxpusher、serverchan", method)
+    # 配置可能误填为包含 Cookie/令牌的 curl；不能将原值写入日志。
+    logger.warning("PUSH_METHOD 配置无效，已跳过推送。仅支持：pushplus、wxpusher、telegram、serverchan；请勿填写 curl 或令牌。")
     return False
